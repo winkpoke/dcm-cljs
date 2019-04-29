@@ -28,24 +28,33 @@
   :cljsbuild {:builds {:app
                        {:source-paths ["src" "env/dev/cljs"]
                         :compiler
-                        {:main "dcm-cljs.dev"
-                         :output-to "public/js/app.js"
-                         :output-dir "public/js/out"
-                         :asset-path   "js/out"
-                         :source-map true
+                        {:main          "dcm-cljs.dev"
+                         :output-to     "public/js/app.js"
+                         :output-dir    "public/js/out"
+                         :asset-path    "js/out"
+                         :source-map    true
                          :optimizations :none
+                         :foreign-libs  [{:file "libs/dicomParser.js"
+                                          :provides ["dicomParser"]
+                                          ;:module-type :commonjs
+                                          }]
                          :pretty-print  true}
                         :figwheel
                         {:on-jsload "dcm-cljs.core/mount-root"
                          :open-urls ["http://localhost:3449/index.html"]}}
+
                        :release
                        {:source-paths ["src" "env/prod/cljs"]
                         :compiler
-                        {:output-to "public/js/app.js"
-                         :output-dir "public/js/release"
+                        {:output-to     "public/js/app.js"
+                         :output-dir    "public/js/release"
+                         ;:externs       ["libs/dicomParser-externs.js"]
+                         :foreign-libs  [{:file "libs/dicomParser.js"
+                                          :provides ["dicomParser"]
+                                          }]
                          :optimizations :advanced
                          :infer-externs true
-                         :pretty-print false}}}}
+                         :pretty-print  false}}}}
 
   :aliases {"package" ["do" "clean" ["cljsbuild" "once" "release"]]}
 
