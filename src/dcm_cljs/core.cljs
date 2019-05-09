@@ -1,5 +1,6 @@
 (ns dcm-cljs.core
     (:require
+      [clojure.zip :as z]
       [reagent.core :as r]
       [dicomParser]
       ))
@@ -107,11 +108,40 @@
     (js/console.log "load CT image ...")
     (->image pixel-buf :width columns :height rows :window window :level level)))
 
+
+;; -------------------------
+;; Structure set
+
+(defn trans-coord 
+  [p x y space]
+  (list (/ (+ (first p) x) space) (/ (+ (second p) x) space))
+  )
+
+(defn draw-line-segment [ctx [w h] [x0 y0] [x1 y1]]
+  
+  )
+
+(defn render-contour [cont ctx [w h]]
+  (let [p0 (first cont)
+        p (rest cont)]
+    (set! (.-fillStyle ctx) "rgba(0, 0, 200, 0.5)")
+    (set! (.-strokeStyle ctx) "rgba(255, 165, 0, 0.8)")
+    (.beginPath ctx)
+    (.moveTo ctx (first p0) (second p0))
+    (-> (map #(.lineTo ctx (first %) (second %)) p)
+        dorun
+        )
+    (.closePath ctx)
+    (.stroke ctx)
+    )
+  )
+
 ;; -------------------------
 ;; Data
 
 (defonce db (r/atom nil))
 (defonce ct (r/atom nil))
+(defonce ss (r/atom nil))
 
 ;; -------------------------
 ;; Handle
@@ -153,10 +183,43 @@
             }])
 
 (defn open-file []
-  [:div>input {:type "file" :id "file" :name "file" 
-               :on-change (on-file)}]
+  [:div 
+   [:input {:type "file" :id "file" :name "file" 
+            :on-change (on-file)}]
+   ]
   )
 
+(defn map-zipper [m]
+  (z/zipper 
+    (fn [x] (or (map? x) (map? (nth x 1))))
+    (fn [x] (seq (if (map? x) x (nth x 1))))
+    (fn [x children] 
+      (if (map? x) 
+        (into {} children) 
+        (assoc x 1 (into {} children))))
+    m))
+
+(def dict {[0x0008, 0x0016] {:name "SOP Class UID" }
+           [0x0020, 0x000d] {:name "Study Instance UID"}
+           [0x0020, 0x0032] {:name "Image Position Patient"}
+           })
+
+
+(defn tag [[k v]] k)
+
+(defn tag->str2 [[grp ele]] 
+  (let [->str (fn [x]
+                (let [s (.toString x 16)
+                      l  4    ; string length of tag group/element 
+                      padding (-> (take (- l (count s)) (repeat "0")) 
+                                  clojure.string/join)]
+                  (str padding s)))]
+    (str "x" (->str grp) (->str ele))))
+
+
+(tag->str2 [32 20])
+
+(-> (map-zipper dict) z/down z/right z/node tag tag->str)
 
 (defn table []
   [:div>table
@@ -169,9 +232,17 @@
     [:td "0008, 0016"]
     [:td (and @db (sop-class-uid @db))]]
    [:tr
+    [:td "Study Instance UID"]
+    [:td "0020, 000d"]
+    [:td (and @db (string @db "x0020000d"))]]
+   [:tr
     [:td "Patient Name"]
     [:td "0010, 0010"]
     [:td (and @db (patient-name @db))]]
+   [:tr
+    [:td "Image Position Patient"]
+    [:td "0020, 0032"]
+    [:td (and @db (string @db "x00200032"))]]
    ]
   )
 
@@ -185,7 +256,7 @@
        (.fillRect ctx 0 0 w h)
        (js/console.log "rendering...")
        (when @ct (.putImageData ctx @ct 0 0))
-       
+       (render-contour [[100 100] [200 100] [200 200] [100 200]] ctx [w h])
        )} 
            ]
    ]
