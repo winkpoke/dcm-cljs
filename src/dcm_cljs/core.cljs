@@ -204,10 +204,9 @@
            [0x0020, 0x0032] {:name "Image Position Patient"}
            })
 
-
 (defn tag [[k v]] k)
 
-(defn tag->str2 [[grp ele]] 
+(defn tag->str [[grp ele]] 
   (let [->str (fn [x]
                 (let [s (.toString x 16)
                       l  4    ; string length of tag group/element 
@@ -216,10 +215,15 @@
                   (str padding s)))]
     (str "x" (->str grp) (->str ele))))
 
+(defn tag->str2 [[grp ele]]
+  (str "x" grp ele)
+  )
 
-(tag->str2 [32 20])
 
-(-> (map-zipper dict) z/down z/right z/node tag tag->str)
+(tag->str2 ["0032" "0016"])
+(tag->str [0x32 20])
+
+(-> (map-zipper dict) z/down z/right z/node tag tag->str2)
 
 (defn table []
   [:div>table
